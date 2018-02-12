@@ -8,7 +8,7 @@ import java.util.Properties;
 
 public class MyKafkaConsumer {
 
-    public static void main(String... args) {
+    public static void main(String... args) throws Exception {
         runConsumer();
     }
 
@@ -43,12 +43,14 @@ public class MyKafkaConsumer {
         }
     }
 
-    private static class  TestConsumerRebalanceListener implements ConsumerRebalanceListener {
+    private static class TestConsumerRebalanceListener implements ConsumerRebalanceListener {
 
+        @Override
         public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
             System.out.println("Called onPartitionsRevoked with partitions:" + partitions);
         }
 
+        @Override
         public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
             System.out.println("Called onPartitionsAssigned with partitions:" + partitions);
         }

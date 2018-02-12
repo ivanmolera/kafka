@@ -2,10 +2,14 @@ import common.Constants;
 import org.apache.kafka.clients.producer.*;
 
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class MyKafkaProducer {
 
-    public static void main(String... args) {
+    private static CountDownLatch countDownLatch = null;
+
+    public static void main(String... args) throws Exception {
         if (args.length == 0) {
             runProducer(100);
         } else {
@@ -24,8 +28,9 @@ public class MyKafkaProducer {
         return new KafkaProducer<>(props);
     }
 
-    private static void runProducer(int numberOfMessages) {
+    private static void runProducer(int numberOfMessages) throws InterruptedException {
         final Producer<String, String> producer = createProducer();
+        countDownLatch = new CountDownLatch(numberOfMessages);
 
         try {
             TestCallback callback = new TestCallback();
@@ -33,6 +38,7 @@ public class MyKafkaProducer {
                 ProducerRecord<String, String> data = new ProducerRecord<>(Constants.TOPIC, "key-" + i, "message-" + i);
                 producer.send(data, callback);
             }
+            countDownLatch.await(30, TimeUnit.SECONDS);
         }
         finally {
             producer.flush();
@@ -42,6 +48,7 @@ public class MyKafkaProducer {
 
     private static class TestCallback implements Callback {
 
+        @Override
         public void onCompletion(RecordMetadata recordMetadata, Exception e) {
             if (e != null) {
                 System.out.println("Error while producing message to topic :" + recordMetadata);
@@ -50,6 +57,7 @@ public class MyKafkaProducer {
             else {
                 String message = String.format("Message sent to topic:%s  partition:%s  offset:%s", recordMetadata.topic(), recordMetadata.partition(), recordMetadata.offset());
                 System.out.println(message);
+                countDownLatch.countDown();
             }
         }
     }
