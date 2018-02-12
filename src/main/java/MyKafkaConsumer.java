@@ -1,8 +1,5 @@
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import common.Constants;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Collection;
@@ -11,27 +8,39 @@ import java.util.Properties;
 
 public class MyKafkaConsumer {
 
-    public static void main(String[] args) {
+    public static void main(String... args) {
+        runConsumer();
+    }
+
+    private static Consumer<String, String> createConsumer() {
 
         Properties consumerConfig = new Properties();
-        consumerConfig.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        consumerConfig.put(ConsumerConfig.GROUP_ID_CONFIG, "my-group");
+        consumerConfig.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, Constants.BOOTSTRAP_SERVER);
+        consumerConfig.put(ConsumerConfig.GROUP_ID_CONFIG, Constants.GROUP);
         consumerConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumerConfig.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         consumerConfig.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-        KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer(consumerConfig);
+
+        final Consumer<String, String> consumer = new KafkaConsumer(consumerConfig);
+
         TestConsumerRebalanceListener rebalanceListener = new TestConsumerRebalanceListener();
-        consumer.subscribe(Collections.singletonList("test-topic"), rebalanceListener);
+        consumer.subscribe(Collections.singletonList(Constants.TOPIC), rebalanceListener);
+
+        return consumer;
+    }
+
+    private static void runConsumer() {
+        final Consumer<String, String> consumer = createConsumer();
 
         while (true) {
-            ConsumerRecords<byte[], byte[]> records = consumer.poll(1000);
-            for (ConsumerRecord<byte[], byte[]> record : records) {
-                System.out.printf("Received Message topic =%s, partition =%s, offset = %d, key = %s, value = %s\n", record.topic(), record.partition(), record.offset(), record.key(), record.value());
-            }
+            ConsumerRecords<String, String> records = consumer.poll(1000);
 
-            consumer.commitSync();
+            records.forEach(record -> {
+                System.out.printf("Message received topic:%s  partition:%s  offset:%d  key:%s  value:%s\n", record.topic(), record.partition(), record.offset(), record.key(), record.value());
+            });
+
+            consumer.commitAsync();
         }
-
     }
 
     private static class  TestConsumerRebalanceListener implements ConsumerRebalanceListener {
@@ -44,5 +53,4 @@ public class MyKafkaConsumer {
             System.out.println("Called onPartitionsAssigned with partitions:" + partitions);
         }
     }
-
 }
